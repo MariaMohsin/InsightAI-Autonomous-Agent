@@ -1,0 +1,46 @@
+================================================================================
+                    🚀 RUN THIS TO DEPLOY AUTOMATICALLY
+================================================================================
+
+1. Open PowerShell (right-click Windows Start → Windows PowerShell)
+
+2. Navigate to project directory:
+   cd C:\Users\HP\Desktop\todo-chatbot-ui
+
+3. Run the deployment script:
+   .\deploy-now.ps1
+
+   If you get an error about execution policy, run this first:
+   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+   Then try again:
+   .\deploy-now.ps1
+
+================================================================================
+
+The script will automatically:
+  ✓ Start Minikube
+  ✓ Configure Docker for Minikube
+  ✓ Build frontend image (3-5 min)
+  ✓ Build backend image (2-3 min)
+  ✓ Deploy backend with Helm
+  ✓ Deploy frontend with Helm
+  ✓ Wait for pods to be ready
+  ✓ Show you the access URL
+  ✓ Offer to open browser
+
+Total time: 5-10 minutes
+
+================================================================================
+
+After deployment, access your app at: http://<minikube-ip>:30080
+
+To check status:
+  kubectl get pods
+  kubectl get services
+
+To view logs:
+  kubectl logs -f deployment/todo-chatbot-backend
+  kubectl logs -f deployment/todo-chatbot-frontend
+
+================================================================================

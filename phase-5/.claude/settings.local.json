@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(python -c \"from app.agent.config import get_todo_agent; from app.mcp.tools import add_task, list_tasks; agent = get_todo_agent\\([add_task, list_tasks]\\); print\\(''✓ Agent loaded successfully''\\); print\\(f''✓ Agent name: {agent.name}''\\); print\\(f''✓ Tools: {len\\(agent.functions\\)} functions''\\)\")",
+      "Bash(curl:*)"
+    ]
+  }
+}

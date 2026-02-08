@@ -1,0 +1,41 @@
+# Ignore backend directory
+backend/
+
+# Ignore deployment scripts
+deploy*.sh
+deploy*.bat
+deploy*.ps1
+
+# Ignore Kubernetes configs
+helm/
+*.yaml
+*.yml
+
+# Ignore documentation
+PHASE_IV_*.md
+KUBERNETES_*.md
+TEST_REPORT.md
+OLLAMA_SETUP.md
+*.txt
+
+# Ignore spec files
+.specify/
+specs/
+history/
+
+# Ignore IDE files
+.claude/
+.vscode/
+.idea/
+
+# Ignore logs
+*.log
+
+# Ignore environment files (will be set in Vercel dashboard)
+.env
+.env.local
+.env.production
+
+# Ignore git
+.git/
+.gitignore

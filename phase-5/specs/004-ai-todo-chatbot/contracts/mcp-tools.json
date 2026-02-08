@@ -1,0 +1,458 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MCP Tools for Todo Management",
+  "description": "Model Context Protocol tool definitions for AI agent to manage user todos",
+  "version": "1.0.0",
+  "tools": [
+    {
+      "name": "add_task",
+      "description": "Create a new todo task for the user. Use this when the user asks to add, create, or remember a task.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "ID of the user creating the task (automatically provided by authentication context)"
+          },
+          "title": {
+            "type": "string",
+            "description": "Task title or summary (required)",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed task description (optional)",
+            "maxLength": 5000
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "description": "Task priority level (optional, defaults to medium)"
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date",
+            "description": "When the task is due in ISO 8601 format (YYYY-MM-DD) (optional)"
+          }
+        },
+        "required": ["user_id", "title"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether task creation succeeded"
+          },
+          "task": {
+            "type": "object",
+            "description": "Created task object",
+            "properties": {
+              "id": {"type": "integer"},
+              "user_id": {"type": "string"},
+              "title": {"type": "string"},
+              "description": {"type": "string"},
+              "status": {"type": "string", "enum": ["pending"]},
+              "priority": {"type": "string", "enum": ["low", "medium", "high"]},
+              "due_date": {"type": "string", "format": "date"},
+              "created_at": {"type": "string", "format": "date-time"}
+            }
+          },
+          "error": {
+            "type": "object",
+            "description": "Error details if creation failed",
+            "properties": {
+              "code": {"type": "string"},
+              "message": {"type": "string"},
+              "user_message": {"type": "string"}
+            }
+          }
+        },
+        "required": ["success"]
+      },
+      "examples": [
+        {
+          "input": {
+            "user_id": "user_123",
+            "title": "call mom",
+            "due_date": "2026-01-23"
+          },
+          "output": {
+            "success": true,
+            "task": {
+              "id": 456,
+              "user_id": "user_123",
+              "title": "call mom",
+              "description": null,
+              "status": "pending",
+              "priority": "medium",
+              "due_date": "2026-01-23",
+              "created_at": "2026-01-22T10:30:00Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "list_tasks",
+      "description": "List tasks for the user with optional filtering by status, priority, or due date. Use this when the user asks to see, show, or list their tasks.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "ID of the user whose tasks to list (automatically provided by authentication context)"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "completed", "deleted"],
+            "description": "Filter by task status (optional, defaults to 'pending')"
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "description": "Filter by task priority (optional)"
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter by specific due date in ISO 8601 format (YYYY-MM-DD) (optional)"
+          },
+          "due_before": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter tasks due before this date (optional)"
+          },
+          "due_after": {
+            "type": "string",
+            "format": "date",
+            "description": "Filter tasks due after this date (optional)"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of tasks to return (optional, default 50)",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 50
+          }
+        },
+        "required": ["user_id"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether listing succeeded"
+          },
+          "tasks": {
+            "type": "array",
+            "description": "List of matching tasks",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "integer"},
+                "user_id": {"type": "string"},
+                "title": {"type": "string"},
+                "description": {"type": "string"},
+                "status": {"type": "string"},
+                "priority": {"type": "string"},
+                "due_date": {"type": "string", "format": "date"},
+                "created_at": {"type": "string", "format": "date-time"},
+                "updated_at": {"type": "string", "format": "date-time"}
+              }
+            }
+          },
+          "count": {
+            "type": "integer",
+            "description": "Number of tasks returned"
+          },
+          "error": {
+            "type": "object",
+            "description": "Error details if listing failed",
+            "properties": {
+              "code": {"type": "string"},
+              "message": {"type": "string"},
+              "user_message": {"type": "string"}
+            }
+          }
+        },
+        "required": ["success"]
+      },
+      "examples": [
+        {
+          "input": {
+            "user_id": "user_123",
+            "status": "pending",
+            "due_date": "2026-01-22"
+          },
+          "output": {
+            "success": true,
+            "tasks": [
+              {
+                "id": 101,
+                "user_id": "user_123",
+                "title": "Finish report",
+                "description": "Quarterly report for Q4",
+                "status": "pending",
+                "priority": "high",
+                "due_date": "2026-01-22",
+                "created_at": "2026-01-20T09:00:00Z",
+                "updated_at": "2026-01-20T09:00:00Z"
+              },
+              {
+                "id": 102,
+                "user_id": "user_123",
+                "title": "Buy groceries",
+                "description": null,
+                "status": "pending",
+                "priority": "medium",
+                "due_date": "2026-01-22",
+                "created_at": "2026-01-21T14:00:00Z",
+                "updated_at": "2026-01-21T14:00:00Z"
+              }
+            ],
+            "count": 2
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_task",
+      "description": "Update an existing task's title, description, priority, or due date. Use this when the user asks to change, modify, or update a task.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "ID of the user who owns the task (automatically provided by authentication context)"
+          },
+          "task_id": {
+            "type": "integer",
+            "description": "ID of the task to update (required)"
+          },
+          "title": {
+            "type": "string",
+            "description": "New task title (optional)",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "description": {
+            "type": "string",
+            "description": "New task description (optional)",
+            "maxLength": 5000
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["low", "medium", "high"],
+            "description": "New task priority (optional)"
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date",
+            "description": "New due date in ISO 8601 format (YYYY-MM-DD) (optional)"
+          }
+        },
+        "required": ["user_id", "task_id"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether update succeeded"
+          },
+          "task": {
+            "type": "object",
+            "description": "Updated task object",
+            "properties": {
+              "id": {"type": "integer"},
+              "user_id": {"type": "string"},
+              "title": {"type": "string"},
+              "description": {"type": "string"},
+              "status": {"type": "string"},
+              "priority": {"type": "string"},
+              "due_date": {"type": "string", "format": "date"},
+              "updated_at": {"type": "string", "format": "date-time"}
+            }
+          },
+          "error": {
+            "type": "object",
+            "description": "Error details if update failed",
+            "properties": {
+              "code": {"type": "string"},
+              "message": {"type": "string"},
+              "user_message": {"type": "string"}
+            }
+          }
+        },
+        "required": ["success"]
+      },
+      "examples": [
+        {
+          "input": {
+            "user_id": "user_123",
+            "task_id": 456,
+            "priority": "high",
+            "due_date": "2026-01-25"
+          },
+          "output": {
+            "success": true,
+            "task": {
+              "id": 456,
+              "user_id": "user_123",
+              "title": "call mom",
+              "description": null,
+              "status": "pending",
+              "priority": "high",
+              "due_date": "2026-01-25",
+              "updated_at": "2026-01-22T10:35:00Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "complete_task",
+      "description": "Mark a task as completed. Use this when the user says they finished, completed, or are done with a task.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "ID of the user who owns the task (automatically provided by authentication context)"
+          },
+          "task_id": {
+            "type": "integer",
+            "description": "ID of the task to complete (required)"
+          }
+        },
+        "required": ["user_id", "task_id"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether completion succeeded"
+          },
+          "task": {
+            "type": "object",
+            "description": "Completed task object",
+            "properties": {
+              "id": {"type": "integer"},
+              "user_id": {"type": "string"},
+              "title": {"type": "string"},
+              "status": {"type": "string", "enum": ["completed"]},
+              "updated_at": {"type": "string", "format": "date-time"}
+            }
+          },
+          "error": {
+            "type": "object",
+            "description": "Error details if completion failed",
+            "properties": {
+              "code": {"type": "string"},
+              "message": {"type": "string"},
+              "user_message": {"type": "string"}
+            }
+          }
+        },
+        "required": ["success"]
+      },
+      "examples": [
+        {
+          "input": {
+            "user_id": "user_123",
+            "task_id": 456
+          },
+          "output": {
+            "success": true,
+            "task": {
+              "id": 456,
+              "user_id": "user_123",
+              "title": "call mom",
+              "status": "completed",
+              "updated_at": "2026-01-22T10:40:00Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "delete_task",
+      "description": "Delete a task permanently. Use this when the user asks to remove, delete, or get rid of a task.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "description": "ID of the user who owns the task (automatically provided by authentication context)"
+          },
+          "task_id": {
+            "type": "integer",
+            "description": "ID of the task to delete (required)"
+          }
+        },
+        "required": ["user_id", "task_id"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Whether deletion succeeded"
+          },
+          "task_id": {
+            "type": "integer",
+            "description": "ID of the deleted task"
+          },
+          "error": {
+            "type": "object",
+            "description": "Error details if deletion failed",
+            "properties": {
+              "code": {"type": "string"},
+              "message": {"type": "string"},
+              "user_message": {"type": "string"}
+            }
+          }
+        },
+        "required": ["success"]
+      },
+      "examples": [
+        {
+          "input": {
+            "user_id": "user_123",
+            "task_id": 456
+          },
+          "output": {
+            "success": true,
+            "task_id": 456
+          }
+        }
+      ]
+    }
+  ],
+  "errorCodes": {
+    "TASK_NOT_FOUND": {
+      "description": "The specified task does not exist or user does not have access to it",
+      "userMessage": "I couldn't find that task. Could you try listing your tasks first?"
+    },
+    "UNAUTHORIZED": {
+      "description": "User is not authenticated or token is invalid",
+      "userMessage": "Please sign in to manage your tasks."
+    },
+    "FORBIDDEN": {
+      "description": "User does not have permission to access this task",
+      "userMessage": "You don't have access to that task."
+    },
+    "VALIDATION_ERROR": {
+      "description": "Input validation failed (missing required field, invalid format, etc.)",
+      "userMessage": "I couldn't process that request. Could you try rephrasing?"
+    },
+    "DATABASE_ERROR": {
+      "description": "Database operation failed unexpectedly",
+      "userMessage": "I encountered an error. Please try again."
+    }
+  }
+}

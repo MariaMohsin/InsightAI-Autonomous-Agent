@@ -1,0 +1,45 @@
+# Default values for todo-chatbot-frontend
+replicaCount: 1
+
+image:
+  repository: todo-chatbot-frontend
+  pullPolicy: Never  # Use local images (Minikube)
+  tag: "latest"
+
+service:
+  type: NodePort  # Use NodePort for Minikube access
+  port: 3000
+  targetPort: 3000
+  nodePort: 30080  # Access via http://minikube-ip:30080
+
+env:
+  - name: NEXT_PUBLIC_API_URL
+    value: "http://todo-chatbot-backend:8000"
+  - name: NEXT_PUBLIC_CHAT_ENABLED
+    value: "true"
+  - name: BETTER_AUTH_SECRET
+    value: "d8b844607dc473a62d5dbf2c44aacbbe5a874ae0919706740f2197421b198f2b"
+  - name: NODE_ENV
+    value: "production"
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: 3000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 3000
+  initialDelaySeconds: 10
+  periodSeconds: 5
