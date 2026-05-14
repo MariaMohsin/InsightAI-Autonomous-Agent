@@ -235,7 +235,10 @@ Autonomous Content-to-Action Agen/
 
 ## Team
 
-**Maria Mohsin** — Full-stack development, AI pipeline design, Flutter implementation
+| Name | Role |
+|------|------|
+| **Maria Mohsin** | Full-stack development, AI pipeline design, Flutter implementation |
+| **Aiman** | Project collaboration & testing |
 
 ---
 

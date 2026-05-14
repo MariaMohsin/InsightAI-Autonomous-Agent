@@ -1,0 +1,14 @@
+# Flutter
+InsightAI-Flutter/build/
+InsightAI-Flutter/.dart_tool/
+InsightAI-Flutter/.flutter-plugins
+InsightAI-Flutter/.flutter-plugins-dependencies
+InsightAI-Flutter/pubspec.lock
+
+# Phase 5
+../phase-5/
+
+# System
+.claude/
+*.lnk
+desktop.ini
