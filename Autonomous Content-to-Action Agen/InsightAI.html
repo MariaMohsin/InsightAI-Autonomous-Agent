@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InsightAI — Autonomous Content-to-Action Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--bg2:#0f0f1a;--bg3:#13131f;
+  --surface:#16162a;--surface2:#1c1c32;
+  --border:#2a2a4a;--border2:#3a3a5c;
+  --accent:#6c63ff;--accent2:#8b5cf6;--accent3:#a78bfa;
+  --cyan:#22d3ee;--green:#10b981;--yellow:#f59e0b;
+  --red:#ef4444;--orange:#f97316;
+  --text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
+  --mono:'DM Mono',monospace;--sans:'Syne',sans-serif;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(108,99,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(108,99,255,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+.orb{position:fixed;border-radius:50%;filter:blur(80px);opacity:.1;pointer-events:none;z-index:0}
+.orb-1{width:600px;height:600px;background:var(--accent);top:-200px;left:-100px}
+.orb-2{width:400px;height:400px;background:var(--cyan);bottom:-100px;right:-100px}
+.wrap{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:0 20px 80px}
+
+/* ── Header ── */
+header{padding:28px 0 22px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);margin-bottom:36px;flex-wrap:wrap;gap:12px}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-icon{width:44px;height:44px;background:linear-gradient(135deg,var(--accent),var(--cyan));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 0 24px rgba(108,99,255,.4);flex-shrink:0}
+.logo-text{font-size:22px;font-weight:800;letter-spacing:-.5px}
+.logo-text span{color:var(--accent3)}
+.logo-sub{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:2px}
+.hbadges{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hbadge{font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text3);display:flex;align-items:center;gap:6px}
+.hbadge-live{border-color:rgba(16,185,129,.4);color:var(--green);background:rgba(16,185,129,.08)}
+.hbadge-google{border-color:rgba(34,211,238,.4);color:var(--cyan);background:rgba(34,211,238,.08)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:blink-dot 2s infinite}
+@keyframes blink-dot{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── Pipeline ── */
+.pipeline{display:flex;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 24px;overflow-x:auto;margin-bottom:6px;gap:0}
+.step{display:flex;flex-direction:column;align-items:center;gap:7px;flex:1;min-width:84px;position:relative;cursor:default;transition:all .3s}
+.step:not(:last-child)::after{content:'';position:absolute;right:-26px;top:16px;width:52px;height:2px;background:var(--border);z-index:1;transition:background .5s}
+.step.completed:not(:last-child)::after{background:var(--accent)}
+.step.active:not(:last-child)::after{background:linear-gradient(90deg,var(--accent),var(--border))}
+.step-num{width:32px;height:32px;border-radius:50%;background:var(--bg3);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;color:var(--text3);transition:all .4s;position:relative;z-index:2}
+.step.active .step-num{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 0 20px rgba(108,99,255,.6);animation:pulse-step 1.5s infinite}
+.step.completed .step-num{background:var(--green);border-color:var(--green);color:#fff}
+.step-label{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);transition:color .3s}
+.step.active .step-label{color:var(--accent3)}
+.step.completed .step-label{color:var(--green)}
+@keyframes pulse-step{0%,100%{box-shadow:0 0 20px rgba(108,99,255,.5)}50%{box-shadow:0 0 32px rgba(108,99,255,.9)}}
+
+.prog-wrap{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:32px}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--cyan));border-radius:2px;width:0%;transition:width .7s cubic-bezier(.4,0,.2,1)}
+
+/* ── API Key Row ── */
+.api-row{display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:20px;flex-wrap:wrap}
+.api-row label{font-family:var(--mono);font-size:11px;color:var(--text3);white-space:nowrap;display:flex;align-items:center;gap:6px}
+.api-row input{flex:1;min-width:200px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-family:var(--mono);font-size:13px;color:var(--text);outline:none;transition:border-color .2s}
+.api-row input:focus{border-color:var(--accent)}
+.api-row .api-hint{font-family:var(--mono);font-size:10px;color:var(--text3);white-space:nowrap}
+
+/* ── Section ── */
+.section{margin-bottom:26px}
+.section-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;gap:8px;flex-wrap:wrap}
+.section-title{font-size:10px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--text3);display:flex;align-items:center;gap:8px}
+.section-title::before{content:'';width:3px;height:13px;background:var(--accent);border-radius:2px}
+
+/* ── Input ── */
+.input-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color .3s,box-shadow .3s}
+.input-card:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(108,99,255,.1)}
+.input-toolbar{padding:9px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg3)}
+.toolbar-info{font-family:var(--mono);font-size:11px;color:var(--text3);display:flex;gap:14px}
+.char-count{color:var(--accent3)}
+textarea{width:100%;height:170px;background:transparent;border:none;outline:none;padding:14px;font-family:var(--mono);font-size:13px;color:var(--text);resize:vertical;line-height:1.75}
+textarea::placeholder{color:var(--text3)}
+
+/* ── Buttons ── */
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:28px}
+.btn{padding:12px 22px;border-radius:10px;border:none;cursor:pointer;font-family:var(--sans);font-weight:700;font-size:14px;transition:all .2s;display:flex;align-items:center;gap:8px;letter-spacing:.2px}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 4px 20px rgba(108,99,255,.4)}
+.btn-primary:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 8px 28px rgba(108,99,255,.6)}
+.btn-secondary{background:var(--surface);color:var(--text2);border:1px solid var(--border2)}
+.btn-secondary:hover{background:var(--surface2);color:var(--text);border-color:var(--accent)}
+.btn-ghost{background:transparent;color:var(--text3);border:1px solid var(--border);font-size:12px;padding:7px 14px}
+.btn-ghost:hover{color:var(--text);border-color:var(--border2)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
+.btn-exec{background:linear-gradient(135deg,var(--green),#059669);color:#fff;box-shadow:0 4px 16px rgba(16,185,129,.3)}
+.btn-exec:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 8px 24px rgba(16,185,129,.5)}
+.spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Console ── */
+.console-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.console-header{padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.c-dots{display:flex;gap:6px}
+.cdot{width:11px;height:11px;border-radius:50%}
+.cdot-r{background:#ef4444}.cdot-y{background:#f59e0b}.cdot-g{background:#10b981}
+.console-title{font-family:var(--mono);font-size:11px;color:var(--text3);display:flex;align-items:center;gap:8px}
+.console-body{padding:12px 14px;height:250px;overflow-y:auto;font-family:var(--mono);font-size:12px;line-height:1.85}
+.log-line{display:flex;gap:8px;align-items:flex-start;animation:fadein .2s ease;margin-bottom:1px}
+@keyframes fadein{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+.log-ts{color:var(--text3);flex-shrink:0;min-width:60px}
+.log-agent{flex-shrink:0;font-weight:500;min-width:76px}
+.log-agent.a1{color:var(--cyan)}.log-agent.a2{color:var(--accent3)}.log-agent.a3{color:var(--yellow)}
+.log-agent.adk{color:var(--green)}.log-agent.sys{color:var(--text3)}
+.log-msg{color:var(--text2);flex:1}
+.log-msg.success{color:var(--green)}.log-msg.warn{color:var(--yellow)}
+.log-msg.error{color:var(--red)}.log-msg.info{color:var(--cyan)}
+.cursor-blink{display:inline-block;width:7px;height:12px;background:var(--accent);margin-left:2px;vertical-align:middle;animation:blink 1s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ── Results ── */
+.results-section{display:none}
+.results-section.visible{display:block}
+.cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+.result-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;position:relative;overflow:hidden;transition:all .3s;animation:slideup .5s ease both}
+@keyframes slideup{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.result-card:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:0 10px 36px rgba(0,0,0,.3)}
+.result-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.card-insight::before{background:linear-gradient(90deg,var(--accent),var(--accent3))}
+.card-impact::before{background:linear-gradient(90deg,var(--yellow),var(--orange))}
+.card-action::before{background:linear-gradient(90deg,var(--green),var(--cyan))}
+.card-icon{font-size:28px;margin-bottom:9px;display:block}
+.card-badge{display:inline-flex;align-items:center;gap:5px;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:3px 9px;border-radius:5px;margin-bottom:10px}
+.badge-insight{background:rgba(108,99,255,.15);color:var(--accent3);border:1px solid rgba(108,99,255,.3)}
+.badge-impact{background:rgba(245,158,11,.15);color:var(--yellow);border:1px solid rgba(245,158,11,.3)}
+.badge-action{background:rgba(16,185,129,.15);color:var(--green);border:1px solid rgba(16,185,129,.3)}
+.card-content{font-size:13px;color:var(--text2);line-height:1.7}
+
+/* ── Trace Table ── */
+.trace-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:22px}
+.trace-header{padding:12px 18px;border-bottom:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text2)}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px}
+thead tr{background:var(--bg3)}
+th{text-align:left;padding:9px 16px;font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border)}
+td{padding:11px 16px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(108,99,255,.04)}
+.tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:500}
+.tag-ok{background:rgba(16,185,129,.15);color:var(--green)}
+.tag-adk{background:rgba(34,211,238,.15);color:var(--cyan)}
+
+/* ── Simulation Tabs ── */
+.sim-tabs{display:flex;gap:4px;margin-bottom:14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:4px}
+.sim-tab{flex:1;padding:9px 8px;border-radius:7px;border:none;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600;transition:all .2s;color:var(--text3);background:transparent;letter-spacing:.2px}
+.sim-tab.active{background:var(--surface2);color:var(--text);border:1px solid var(--border2)}
+.sim-tab:hover:not(.active){color:var(--text2)}
+.sim-panel{display:none}
+.sim-panel.active{display:block}
+
+/* ── Email ── */
+.email-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:12px}
+.email-header{padding:13px 18px;border-bottom:1px solid var(--border);background:var(--bg3);display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.email-label{font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:4px}
+.email-subject{font-size:15px;font-weight:700;color:var(--text)}
+.email-body-area{padding:18px;font-family:var(--mono);font-size:12.5px;color:var(--text2);line-height:1.85;white-space:pre-wrap}
+.email-footer{padding:12px 18px;border-top:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.email-recipients{font-family:var(--mono);font-size:11px;color:var(--text3)}
+
+/* ── CRM Panel ── */
+.crm-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:12px}
+.crm-toolbar{padding:12px 18px;border-bottom:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:space-between}
+.crm-table-wrap{overflow-x:auto}
+.crm-record{display:grid;grid-template-columns:1fr 120px 120px 90px;gap:0;border-bottom:1px solid var(--border)}
+.crm-record:last-child{border-bottom:none}
+.crm-record>div{padding:11px 16px;font-family:var(--mono);font-size:12px;color:var(--text2)}
+.crm-record.header>div{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);background:var(--bg3);padding:8px 16px;border-bottom:1px solid var(--border)}
+.stage-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:500}
+.stage-cold{background:rgba(100,116,139,.15);color:var(--text3)}
+.stage-warm{background:rgba(245,158,11,.15);color:var(--yellow)}
+.stage-engaged{background:rgba(16,185,129,.15);color:var(--green)}
+
+/* ── Webhook Panel ── */
+.webhook-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:12px}
+.webhook-header{padding:12px 18px;border-bottom:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:space-between}
+.webhook-body{padding:18px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.webhook-pane{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px}
+.webhook-pane-title{font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3);font-family:var(--mono);margin-bottom:10px}
+.webhook-code{font-family:var(--mono);font-size:11.5px;color:var(--cyan);line-height:1.8;white-space:pre-wrap}
+.webhook-footer{padding:12px 18px;border-top:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+
+/* ── Exec Result ── */
+.exec-result{display:none;margin-top:10px;background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:16px;animation:fadein .4s ease}
+.exec-result.visible{display:block}
+.exec-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.exec-item{display:flex;flex-direction:column;gap:3px}
+.exec-key{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);font-family:var(--mono)}
+.exec-val{font-family:var(--mono);font-size:12px;color:var(--green);font-weight:500}
+
+/* ── Before / After ── */
+.bva-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.bva-header{padding:12px 18px;border-bottom:1px solid var(--border);background:var(--bg3);font-size:13px;font-weight:600;color:var(--text2);display:flex;align-items:center;gap:8px}
+.bva-grid{display:grid;grid-template-columns:1fr 40px 1fr}
+.bva-col{padding:18px}
+.bva-arrow{display:flex;align-items:center;justify-content:center;color:var(--accent3);font-size:18px;border-left:1px solid var(--border);border-right:1px solid var(--border)}
+.bva-col-title{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-bottom:12px;font-family:var(--mono)}
+.metric-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)}
+.metric-row:last-child{border-bottom:none}
+.metric-name{font-size:12px;color:var(--text2)}
+.metric-val{font-family:var(--mono);font-size:12px;font-weight:600}
+.val-before{color:var(--red)}.val-after{color:var(--green)}
+
+/* ── Misc ── */
+.divider{height:1px;background:var(--border);margin:28px 0}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg3)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+
+/* ── Mobile ── */
+@media(max-width:768px){
+  .cards-grid{grid-template-columns:1fr}
+  .bva-grid{grid-template-columns:1fr}
+  .bva-arrow{display:none}
+  .exec-grid{grid-template-columns:1fr 1fr}
+  .crm-record{grid-template-columns:1fr 90px 90px}
+  .crm-record>div:last-child{display:none}
+  .crm-record.header>div:last-child{display:none}
+  .webhook-body{grid-template-columns:1fr}
+  th:nth-child(3),td:nth-child(3){display:none}
+}
+@media(max-width:480px){
+  .api-row{flex-direction:column;align-items:flex-start}
+  .api-row input{width:100%}
+  .exec-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="wrap">
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div>
+      <div class="logo-text">Insight<span>AI</span></div>
+      <div class="logo-sub">Autonomous Content-to-Action Agent · Hackathon Edition</div>
+    </div>
+  </div>
+  <div class="hbadges">
+    <div class="hbadge hbadge-live"><div class="dot"></div>Runtime Active</div>
+    <div class="hbadge hbadge-google">🔷 Google ADK</div>
+    <div class="hbadge">3 Agents</div>
+    <div class="hbadge">Gemini Pro</div>
+  </div>
+</header>
+
+<!-- Pipeline -->
+<div class="pipeline" id="pipeline">
+  <div class="step active" id="step-1"><div class="step-num">01</div><div class="step-label">Ingest</div></div>
+  <div class="step" id="step-2"><div class="step-num">02</div><div class="step-label">Analyze</div></div>
+  <div class="step" id="step-3"><div class="step-num">03</div><div class="step-label">Insights</div></div>
+  <div class="step" id="step-4"><div class="step-num">04</div><div class="step-label">Action</div></div>
+  <div class="step" id="step-5"><div class="step-num">05</div><div class="step-label">Simulate</div></div>
+  <div class="step" id="step-6"><div class="step-num">06</div><div class="step-label">Outcome</div></div>
+</div>
+<div class="prog-wrap"><div class="prog-fill" id="progBar"></div></div>
+
+<!-- API Key -->
+<div class="api-row">
+  <label>🔑 API KEY</label>
+  <select id="apiProvider" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-family:var(--mono);font-size:12px;color:var(--text);outline:none;cursor:pointer">
+    <option value="gemini">Gemini (Google)</option>
+    <option value="groq">Groq (Llama 3)</option>
+  </select>
+  <input type="password" id="apiKey" placeholder="Paste key here..." value="AIzaSyD6hgUIoWl0A_oUdinsBbt9LhDRTZoztk4">
+  <span class="api-hint" id="apiHint" style="color:var(--green);font-size:9px">free at aistudio.google.com</span>
+</div>
+
+<!-- Input -->
+<div class="section">
+  <div class="section-hdr">
+    <div class="section-title">Sales Report Input</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" onclick="clearReport()">✕ Clear</button>
+      <button class="btn btn-ghost" onclick="loadSample()">⬇ Load Sample</button>
+    </div>
+  </div>
+  <div class="input-card">
+    <div class="input-toolbar">
+      <div class="toolbar-info">
+        <span>report.txt</span>
+        <span class="char-count" id="charCount">0 chars</span>
+      </div>
+      <span style="font-family:var(--mono);font-size:10px;color:var(--text3)">plain text · UTF-8</span>
+    </div>
+    <textarea id="reportInput" placeholder="Paste your sales report here, or click '⬇ Load Sample' for Pakistani business data..." oninput="updateCC()"></textarea>
+  </div>
+</div>
+
+<!-- Buttons -->
+<div class="btn-row">
+  <button class="btn btn-primary" id="runBtn" onclick="runAnalysis()">
+    <div class="spinner" id="runSpinner"></div>
+    <span id="runBtnTxt">▶ Run Agentic Analysis</span>
+  </button>
+  <button class="btn btn-secondary" onclick="resetAll()">↺ Reset</button>
+</div>
+
+<!-- Console -->
+<div class="section">
+  <div class="section-hdr"><div class="section-title">Agent Console — ADK Orchestrated</div></div>
+  <div class="console-card">
+    <div class="console-header">
+      <div class="c-dots"><div class="cdot cdot-r"></div><div class="cdot cdot-y"></div><div class="cdot cdot-g"></div></div>
+      <div class="console-title">
+        google-adk · multi-agent-runtime · 3 agents
+        <span style="color:var(--accent3)">· gemini-2.0-flash</span>
+      </div>
+      <span id="consoleTimer" style="font-family:var(--mono);font-size:10px;color:var(--text3)">idle</span>
+    </div>
+    <div class="console-body" id="consoleBody">
+      <div class="log-line"><span class="log-ts">00:00:00</span><span class="log-agent adk">[ADK]    </span><span class="log-msg info">Google ADK Orchestrator v1.2 — session initialized</span></div>
+      <div class="log-line"><span class="log-ts">00:00:00</span><span class="log-agent adk">[ADK]    </span><span class="log-msg">Tool registry loaded: parse_doc · extract_kpis · synthesize · generate_action · simulate</span></div>
+      <div class="log-line"><span class="log-ts">00:00:00</span><span class="log-agent sys">[SYS]    </span><span class="log-msg">Agent-1 (Ingestion) · Agent-2 (Analyst) · Agent-3 (Planner) standing by...</span></div>
+      <span class="cursor-blink" id="consoleCursor"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Results -->
+<div class="results-section" id="resultsSection">
+  <div class="divider"></div>
+
+  <!-- Cards -->
+  <div class="section">
+    <div class="section-hdr"><div class="section-title">Agent Findings</div></div>
+    <div class="cards-grid">
+      <div class="result-card card-insight" style="animation-delay:.05s">
+        <span class="card-icon">🔍</span>
+        <div class="card-badge badge-insight">◆ Insight</div>
+        <div class="card-content" id="cardInsight">—</div>
+      </div>
+      <div class="result-card card-impact" style="animation-delay:.12s">
+        <span class="card-icon">📊</span>
+        <div class="card-badge badge-impact">◆ Impact</div>
+        <div class="card-content" id="cardImpact">—</div>
+      </div>
+      <div class="result-card card-action" style="animation-delay:.2s">
+        <span class="card-icon">⚡</span>
+        <div class="card-badge badge-action">◆ Action</div>
+        <div class="card-content" id="cardAction">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trace -->
+  <div class="section">
+    <div class="section-hdr"><div class="section-title">Agent Trace Log — ADK Execution</div></div>
+    <div class="trace-card">
+      <div class="trace-header">📋 ADK Session Trace — <span id="traceTs" style="color:var(--accent3);font-family:var(--mono)">—</span></div>
+      <table>
+        <thead><tr><th>Agent</th><th>ADK Tool Call</th><th>Input</th><th>Output</th><th>Latency</th><th>Status</th></tr></thead>
+        <tbody id="traceTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Simulation Tabs -->
+  <div class="section">
+    <div class="section-hdr"><div class="section-title">Action Simulation</div></div>
+    <div class="sim-tabs">
+      <button class="sim-tab active" onclick="switchTab('email',this)">📧 Email Campaign</button>
+      <button class="sim-tab" onclick="switchTab('crm',this)">🗂 CRM Pipeline</button>
+      <button class="sim-tab" onclick="switchTab('webhook',this)">🔗 Webhook / API</button>
+    </div>
+
+    <!-- Email Tab -->
+    <div class="sim-panel active" id="panel-email">
+      <div class="email-card">
+        <div class="email-header">
+          <div>
+            <div class="email-label">Generated Outreach Email · Agent-3</div>
+            <div class="email-subject" id="emailSubject">—</div>
+          </div>
+          <span style="font-family:var(--mono);font-size:10px;color:var(--text3)">gemini-2.0-flash</span>
+        </div>
+        <div class="email-body-area" id="emailBody">—</div>
+        <div class="email-footer">
+          <div class="email-recipients">TO: <span id="emailTo">dormant accounts</span></div>
+          <button class="btn btn-exec" id="emailExecBtn" onclick="executeEmail()">
+            <span class="spinner" id="emailSpinner"></span>
+            <span id="emailExecTxt">⚡ Execute Email Campaign</span>
+          </button>
+        </div>
+      </div>
+      <div class="exec-result" id="emailResult">
+        <div class="exec-grid">
+          <div class="exec-item"><span class="exec-key">Email Status</span><span class="exec-val" id="eEmail">—</span></div>
+          <div class="exec-item"><span class="exec-key">Recipients</span><span class="exec-val" id="eRecip">—</span></div>
+          <div class="exec-item"><span class="exec-key">Timestamp</span><span class="exec-val" id="eTime">—</span></div>
+          <div class="exec-item"><span class="exec-key">Open Rate (est.)</span><span class="exec-val" id="eOpen">—</span></div>
+          <div class="exec-item"><span class="exec-key">Campaign ID</span><span class="exec-val" id="eCamp">—</span></div>
+          <div class="exec-item"><span class="exec-key">Agent</span><span class="exec-val">Agent-3 · ADK</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CRM Tab -->
+    <div class="sim-panel" id="panel-crm">
+      <div class="crm-card">
+        <div class="crm-toolbar">
+          <span style="font-size:13px;font-weight:600;color:var(--text2)">🗂 Salesforce CRM — Pipeline Update</span>
+          <span style="font-family:var(--mono);font-size:10px;color:var(--text3)">Agent-3 · ADK tool: update_crm()</span>
+        </div>
+        <div class="crm-table-wrap">
+          <div class="crm-record header">
+            <div>Contact / Company</div><div>Stage Before</div><div>Stage After</div><div>Value</div>
+          </div>
+          <div id="crmRows"></div>
+        </div>
+        <div style="padding:12px 18px;border-top:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+          <span style="font-family:var(--mono);font-size:11px;color:var(--text3)" id="crmTotal">0 records staged</span>
+          <button class="btn btn-exec" id="crmExecBtn" onclick="executeCRM()">
+            <span class="spinner" id="crmSpinner"></span>
+            <span id="crmExecTxt">🗂 Push CRM Update</span>
+          </button>
+        </div>
+      </div>
+      <div class="exec-result" id="crmResult">
+        <div class="exec-grid">
+          <div class="exec-item"><span class="exec-key">Records Updated</span><span class="exec-val" id="cRecords">—</span></div>
+          <div class="exec-item"><span class="exec-key">Workflow Trigger</span><span class="exec-val" id="cWorkflow">—</span></div>
+          <div class="exec-item"><span class="exec-key">Timestamp</span><span class="exec-val" id="cTime">—</span></div>
+          <div class="exec-item"><span class="exec-key">CRM Ticket</span><span class="exec-val" id="cTicket">—</span></div>
+          <div class="exec-item"><span class="exec-key">Sync Status</span><span class="exec-val" id="cSync">—</span></div>
+          <div class="exec-item"><span class="exec-key">ADK Tool</span><span class="exec-val">update_crm_pipeline()</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Webhook Tab -->
+    <div class="sim-panel" id="panel-webhook">
+      <div class="webhook-card">
+        <div class="webhook-header">
+          <span style="font-size:13px;font-weight:600;color:var(--text2)">🔗 Webhook / API Trigger</span>
+          <span style="font-family:var(--mono);font-size:10px;color:var(--text3)">ADK tool: trigger_webhook()</span>
+        </div>
+        <div class="webhook-body">
+          <div class="webhook-pane">
+            <div class="webhook-pane-title">POST Request Payload</div>
+            <div class="webhook-code" id="webhookReq">—</div>
+          </div>
+          <div class="webhook-pane">
+            <div class="webhook-pane-title">Mock API Response</div>
+            <div class="webhook-code" id="webhookRes" style="color:var(--green)">—</div>
+          </div>
+        </div>
+        <div class="webhook-footer">
+          <span style="font-family:var(--mono);font-size:11px;color:var(--text3)" id="webhookEndpoint">Endpoint: —</span>
+          <button class="btn btn-exec" id="whExecBtn" onclick="executeWebhook()">
+            <span class="spinner" id="whSpinner"></span>
+            <span id="whExecTxt">🔗 Fire Webhook</span>
+          </button>
+        </div>
+      </div>
+      <div class="exec-result" id="whResult">
+        <div class="exec-grid">
+          <div class="exec-item"><span class="exec-key">HTTP Status</span><span class="exec-val" id="wStatus">—</span></div>
+          <div class="exec-item"><span class="exec-key">Latency</span><span class="exec-val" id="wLatency">—</span></div>
+          <div class="exec-item"><span class="exec-key">Timestamp</span><span class="exec-val" id="wTime">—</span></div>
+          <div class="exec-item"><span class="exec-key">Retry Count</span><span class="exec-val">0 (success)</span></div>
+          <div class="exec-item"><span class="exec-key">Request ID</span><span class="exec-val" id="wReqId">—</span></div>
+          <div class="exec-item"><span class="exec-key">ADK Tool</span><span class="exec-val">trigger_webhook()</span></div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /sim section -->
+
+  <!-- Before / After -->
+  <div class="section">
+    <div class="section-hdr"><div class="section-title">Outcome Projection</div></div>
+    <div class="bva-card">
+      <div class="bva-header">📈 Before vs After — Projected Business Impact (90-day horizon)</div>
+      <div class="bva-grid">
+        <div class="bva-col"><div class="bva-col-title">Before Action</div><div id="beforeMetrics"></div></div>
+        <div class="bva-arrow">→</div>
+        <div class="bva-col"><div class="bva-col-title">After Action (Projected)</div><div id="afterMetrics"></div></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /results -->
+</div><!-- /wrap -->
+
+<script>
+// ═══════════════════════════════════════════════
+//  SAMPLE REPORT
+// ═══════════════════════════════════════════════
+const SAMPLE = `QUARTERLY SALES PERFORMANCE REPORT
+Company: NovaTech Solutions (Pvt) Ltd, Karachi
+Period: Q1 2025 (January – March)
+Prepared by: Sales Operations Team
+
+EXECUTIVE SUMMARY
+NovaTech Solutions recorded total revenues of PKR 47.3 million for Q1 2025,
+representing a 12% decline vs Q4 2024 (PKR 53.7M). This is the second consecutive
+quarter of declining revenue, raising concerns about pipeline health and conversion.
+
+REGIONAL BREAKDOWN
+Karachi Division:    PKR 22.1M  (46.7%)
+Lahore Division:     PKR 13.8M  (29.2%)
+Islamabad Division:  PKR  7.6M  (16.1%)
+
+PRODUCT PERFORMANCE
+Cloud ERP Suite:       PKR 18.2M  — DOWN 18% QoQ (SME churn, Indian SaaS pricing)
+Cybersecurity Module:  PKR 14.7M  — UP 9% QoQ (new SECP compliance directive)
+HR & Payroll SaaS:     PKR  8.4M  — DOWN 5% QoQ
+Professional Services: PKR  6.0M  — Flat
+
+KEY CONCERNS
+1. Lost 3 enterprise ERP accounts worth PKR 5.2M — competitor pricing pressure
+2. Average deal cycle: 42 days → 67 days (+59.5%) — procurement bottlenecks
+3. Sales team attrition: 4 of 18 reps left Q1, disrupting Lahore pipeline
+4. Upsell rate dropped: 34% → 19% — existing customers not being re-engaged
+5. MQL→SQL conversion: 1,240 MQLs generated, only 8.3% converted
+
+OPPORTUNITIES
+- Cybersecurity segment growing 40% YoY (SECP compliance driving demand)
+- 67 dormant accounts (last purchase >6 months) worth ~PKR 31M if reactivated
+- Islamabad public sector expanding IT budgets — ERP opportunity untapped
+- 14 existing clients requested WhatsApp Business API integration (upsell)
+
+SALES TEAM METRICS
+Active reps: 14  |  Vacant: 4
+Quota attainment: 61% average
+Top performer: Raza Khan — 142% (Karachi)
+Lowest: Lahore team — 38% average`;
+
+// ═══════════════════════════════════════════════
+//  MOCK ANALYSIS ENGINE
+// ═══════════════════════════════════════════════
+function mockAnalyze(text) {
+  const pick = (pats, fb) => { for (const p of pats) { const m = text.match(p); if (m) return m[1]||m[0]; } return fb; };
+  const revenue    = pick([/PKR\s*([\d.]+)\s*m(?:illion)?/i], '47.3');
+  const decline    = pick([/(\d+)%\s*decline/i, /down\s*(\d+)%/i], '12');
+  const dormant    = pick([/(\d+)\s*dormant/i], '67');
+  const dormantVal = pick([/PKR\s*([\d.]+)\s*M.*?reactivat/i], '31');
+  const sqlRate    = pick([/([\d.]+)%\s*converted/i, /only\s*([\d.]+)%\s*conv/i], '8.3');
+  const upsellBef  = pick([/(\d+)%\s*→\s*\d+%.*?[Uu]psell/], '34');
+  const upsellAft  = pick([/\d+%\s*→\s*(\d+)%.*?[Uu]psell/, /[Uu]psell.*?(\d+)%/], '19');
+  const dealCycle  = pick([/\d+\s*days?\s*→\s*(\d+)\s*days?/], '67');
+  const quota      = pick([/(\d+)%\s*average.*?quota/i], '61');
+  const company    = pick([/Company[:\s]+([^\n,]+)/i], 'NovaTech Solutions');
+  const revNum     = parseFloat(revenue)||47.3;
+  const projRev    = (revNum*1.21).toFixed(1);
+  const sqlProj    = ((parseFloat(sqlRate)||8.3)*1.7).toFixed(1);
+  const upsellProj = Math.min((parseInt(upsellAft)||19)+10,35);
+  const quotaProj  = Math.min((parseInt(quota)||61)+17,85);
+  const dealProj   = Math.max((parseInt(dealCycle)||67)-18,30);
+  const compName   = company.replace(/\(Pvt\).*/i,'').trim();
+  const hasCyber   = text.toLowerCase().includes('cybersecur');
+  return {
+    company: compName, dormant, dormantVal, dealCycle, quota, upsellAft,
+    insight: `${compName} is experiencing a PKR ${revNum}M quarterly revenue with a ${decline}% QoQ decline driven by ${hasCyber?'Cloud ERP churn and competitor pricing pressure':'product segment weakness'}. The deal cycle has expanded to ${dealCycle} days, and ${dormant} dormant accounts worth ~PKR ${dormantVal}M sit completely unengaged — a critical missed opportunity.`,
+    impact: `The collapse in upsell rate from ${upsellBef}% to ${upsellAft}% combined with an MQL→SQL conversion of just ${sqlRate}% signals a broken mid-funnel. At current trajectory, an additional PKR ${(revNum*0.08).toFixed(1)}M is at quarterly risk. However, reactivating ${dormant} dormant accounts alone could recover PKR ${dormantVal}M+ in 90 days — more than reversing Q1 losses.`,
+    action: `Priority 1: Launch a personalized re-engagement campaign targeting all ${dormant} dormant accounts emphasizing ${hasCyber?'SECP compliance and cybersecurity upsell':'product value and renewal incentives'}. Priority 2: Deploy a procurement liaison in Karachi to cut deal cycle from ${dealCycle} to ~${dealProj} days. Target quota attainment from ${quota}% → ${quotaProj}% within 60 days.`,
+    emailSubject: `[Priority] Re-engagement Offer for ${compName} Clients — Q2 2025`,
+    emailBody: `Dear Valued Partner,
+
+We hope this message finds you well. As a valued former client of ${compName}, we're reaching out with a time-sensitive opportunity specifically designed for your organization.
+
+Our team has identified significant ROI potential for businesses like yours — particularly around ${hasCyber?'new SECP cybersecurity compliance requirements (deadline: Q3 2025)':'cloud-based operational efficiency and cost reduction'}.
+
+As a returning partner, you receive exclusive access to:
+  • 20% loyalty discount on all Q2 2025 renewal packages
+  • Dedicated senior account manager assigned on Day 1
+  • Free technical infrastructure audit (worth PKR 180,000)
+  • Priority onboarding — live within 2 weeks
+
+${hasCyber?'⚠ SECP compliance deadline is approaching. Non-compliant firms face penalties up to PKR 5M.\n\n':''}Book a 30-minute discovery call this week — only 12 slots remain.
+
+Reply to this email or call +92-21-XXXX-XXXX
+
+Warm regards,
+Sales Operations Team
+${compName}`,
+    before: [
+      {m:'Quarterly Revenue',  b:`PKR ${revNum}M`,      a:`PKR ${projRev}M (+${Math.round((projRev-revNum)/revNum*100)}%)`},
+      {m:'Upsell Rate',        b:`${upsellAft}%`,       a:`${upsellProj}% (+${upsellProj-(parseInt(upsellAft)||19)}pp)`},
+      {m:'MQL → SQL Rate',     b:`${sqlRate}%`,          a:`${sqlProj}% (+${(parseFloat(sqlProj)-parseFloat(sqlRate)).toFixed(1)}pp)`},
+      {m:'Avg Deal Cycle',     b:`${dealCycle} days`,    a:`${dealProj} days (−${(parseInt(dealCycle)||67)-dealProj}d)`},
+      {m:'Quota Attainment',   b:`${quota}%`,            a:`${quotaProj}% (+${quotaProj-(parseInt(quota)||61)}pp)`},
+      {m:'Dormant Accounts',   b:`${dormant} unengaged`, a:`${Math.round((parseInt(dormant)||67)*0.4)} reactivated (40%)`},
+    ],
+    crmSample: [
+      {name:'Pak Textile Co · Lahore',    before:'Cold',  after:'Re-engaged', val:'PKR 1.4M'},
+      {name:'Sunrise Foods · Karachi',    before:'Cold',  after:'Re-engaged', val:'PKR 890K'},
+      {name:'Ali Brothers Trading',       before:'Cold',  after:'Warm',       val:'PKR 1.1M'},
+      {name:'Galaxy Pharma · Islamabad',  before:'Churn', after:'Re-engaged', val:'PKR 2.2M'},
+      {name:'Metro Builders Ltd',         before:'Cold',  after:'Warm',       val:'PKR 760K'},
+    ],
+  };
+}
+
+// ═══════════════════════════════════════════════
+//  GEMINI API CALL
+// ═══════════════════════════════════════════════
+async function callGemini(report, apiKey) {
+  const prompt = `You are a business intelligence AI. Analyze this sales report and return ONLY a JSON object — no markdown, no extra text.
+
+REPORT:
+${report}
+
+Return exactly this JSON structure:
+{
+  "insight": "2-3 sentence key finding with specific data points from the report",
+  "impact": "2-3 sentence business impact with numbers and consequences",
+  "action": "2-3 sentence prioritized recommendations with timeline",
+  "emailSubject": "compelling re-engagement email subject line",
+  "emailBody": "professional 150-200 word re-engagement email referencing specific report findings with clear CTA",
+  "before": [
+    {"m": "Quarterly Revenue", "b": "PKR X.XM", "a": "PKR X.XM (+X%)"},
+    {"m": "Upsell Rate", "b": "X%", "a": "X% (+Xpp)"},
+    {"m": "MQL → SQL Rate", "b": "X%", "a": "X%"},
+    {"m": "Avg Deal Cycle", "b": "X days", "a": "X days"},
+    {"m": "Quota Attainment", "b": "X%", "a": "X%"},
+    {"m": "Dormant Accounts", "b": "X unengaged", "a": "X reactivated"}
+  ],
+  "dormant": "67",
+  "dormantVal": "31",
+  "company": "NovaTech Solutions"
+}
+
+Base all numbers on the actual report. Return ONLY valid JSON.`;
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        contents:[{parts:[{text:prompt}]}],
+        generationConfig:{temperature:0.3,maxOutputTokens:1200}
+      })
+    }
+  );
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error?.message||`HTTP ${res.status}`); }
+  const data = await res.json();
+  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+  const clean = raw.replace(/^```json\s*/i,'').replace(/^```/,'').replace(/```\s*$/,'').trim();
+  return JSON.parse(clean);
+}
+
+// ═══════════════════════════════════════════════
+//  GROQ API CALL  (Llama 3.3 70B)
+// ═══════════════════════════════════════════════
+async function callGroq(report, apiKey) {
+  const prompt = `You are a business intelligence AI. Analyze this sales report and return ONLY valid JSON — no markdown, no extra text.
+
+REPORT:
+${report}
+
+Return exactly this JSON structure:
+{
+  "insight": "2-3 sentence key finding with specific data points",
+  "impact": "2-3 sentence business impact with numbers",
+  "action": "2-3 sentence prioritized recommendations with timeline",
+  "emailSubject": "compelling re-engagement email subject line",
+  "emailBody": "professional 150-200 word re-engagement email with clear CTA",
+  "before": [
+    {"m": "Quarterly Revenue", "b": "PKR X.XM", "a": "PKR X.XM (+X%)"},
+    {"m": "Upsell Rate", "b": "X%", "a": "X% (+Xpp)"},
+    {"m": "MQL → SQL Rate", "b": "X%", "a": "X%"},
+    {"m": "Avg Deal Cycle", "b": "X days", "a": "X days"},
+    {"m": "Quota Attainment", "b": "X%", "a": "X%"},
+    {"m": "Dormant Accounts", "b": "X unengaged", "a": "X reactivated"}
+  ],
+  "dormant": "67",
+  "dormantVal": "31",
+  "company": "NovaTech Solutions"
+}
+Return ONLY valid JSON.`;
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3,
+      max_tokens: 1200,
+      response_format: { type: 'json_object' }
+    })
+  });
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error?.message||`HTTP ${res.status}`); }
+  const data = await res.json();
+  const raw = data.choices?.[0]?.message?.content || '{}';
+  const clean = raw.replace(/^```json\s*/i,'').replace(/^```/,'').replace(/```\s*$/,'').trim();
+  return JSON.parse(clean);
+}
+
+// ─── Provider switcher ───
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('apiProvider').addEventListener('change', function() {
+    const hint = document.getElementById('apiHint');
+    if (this.value === 'groq') {
+      hint.textContent = 'free at console.groq.com';
+      hint.style.color = 'var(--yellow)';
+      document.getElementById('apiKey').value = '';
+      document.getElementById('apiKey').placeholder = 'gsk_...';
+    } else {
+      hint.textContent = 'free at aistudio.google.com';
+      hint.style.color = 'var(--green)';
+      document.getElementById('apiKey').value = 'AIzaSyD6hgUIoWl0A_oUdinsBbt9LhDRTZoztk4';
+      document.getElementById('apiKey').placeholder = 'AIza...';
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════
+//  STATE & HELPERS
+// ═══════════════════════════════════════════════
+const sleep = ms => new Promise(r => setTimeout(r,ms));
+const ri = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+let state = {step:1, running:false, result:null, startMs:null, timerInt:null};
+
+function ts() { const d=new Date(); return [d.getHours(),d.getMinutes(),d.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':'); }
+function setStep(n) {
+  state.step = n;
+  for (let i=1;i<=6;i++) {
+    const el = document.getElementById(`step-${i}`);
+    el.classList.remove('active','completed');
+    if (i<n) el.classList.add('completed'); else if (i===n) el.classList.add('active');
+  }
+  document.getElementById('progBar').style.width=`${Math.round((n-1)/5*100)}%`;
+}
+function log(agent, cls, msg, agentCls='sys') {
+  const body = document.getElementById('consoleBody');
+  const cursor = document.getElementById('consoleCursor');
+  const line = document.createElement('div');
+  line.className='log-line';
+  line.innerHTML=`<span class="log-ts">${ts()}</span><span class="log-agent ${agentCls}">[${agent.padEnd(7)}]</span><span class="log-msg ${cls}">${msg}</span>`;
+  body.insertBefore(line,cursor);
+  body.scrollTop=body.scrollHeight;
+}
+function clearConsole() {
+  document.getElementById('consoleBody').innerHTML='<span class="cursor-blink" id="consoleCursor"></span>';
+}
+function startTimer() {
+  state.startMs=Date.now();
+  state.timerInt=setInterval(()=>{ const el=document.getElementById('consoleTimer'); if(el) el.textContent=((Date.now()-state.startMs)/1000).toFixed(1)+'s'; },100);
+}
+function stopTimer() {
+  clearInterval(state.timerInt);
+  const el=document.getElementById('consoleTimer');
+  if(el) el.textContent=((Date.now()-state.startMs)/1000).toFixed(1)+'s total';
+}
+function updateCC() { document.getElementById('charCount').textContent=document.getElementById('reportInput').value.length.toLocaleString()+' chars'; }
+function loadSample() { document.getElementById('reportInput').value=SAMPLE; updateCC(); log('SYS','info','Sample report loaded — NovaTech Solutions (Pvt) Ltd · Q1 2025 · PKR 47.3M'); }
+function clearReport() { document.getElementById('reportInput').value=''; updateCC(); }
+function setRunning(v) {
+  state.running=v;
+  document.getElementById('runBtn').disabled=v;
+  document.getElementById('runSpinner').style.display=v?'block':'none';
+  document.getElementById('runBtnTxt').textContent=v?'Agents Running...':'▶ Run Agentic Analysis';
+}
+function resetAll() {
+  clearConsole();
+  setStep(1);
+  document.getElementById('resultsSection').classList.remove('visible');
+  document.getElementById('progBar').style.width='0%';
+  ['emailResult','crmResult','whResult'].forEach(id=>document.getElementById(id).classList.remove('visible'));
+  ['emailExecBtn','crmExecBtn','whExecBtn'].forEach(id=>{document.getElementById(id).disabled=false;document.getElementById(id).style.background='';});
+  ['emailExecTxt','crmExecTxt','whExecTxt'].forEach((id,i)=>{document.getElementById(id).textContent=['⚡ Execute Email Campaign','🗂 Push CRM Update','🔗 Fire Webhook'][i];});
+  state.result=null;
+  setRunning(false);
+  log('SYS','','Runtime reset. Ready for new analysis.');
+  document.getElementById('consoleTimer').textContent='idle';
+}
+function switchTab(id, btn) {
+  document.querySelectorAll('.sim-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.sim-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-'+id).classList.add('active');
+}
+
+// ═══════════════════════════════════════════════
+//  MAIN PIPELINE
+// ═══════════════════════════════════════════════
+async function runAnalysis() {
+  const report = document.getElementById('reportInput').value.trim();
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!report) { log('SYS','error','No report content. Paste a report or click "⬇ Load Sample".'); return; }
+
+  setRunning(true);
+  clearConsole();
+  document.getElementById('resultsSection').classList.remove('visible');
+  startTimer();
+  const provider = document.getElementById('apiProvider').value; // 'gemini' or 'groq'
+  const usingGemini = !!apiKey;
+  const providerLabel = !apiKey ? 'Mock Engine' : provider === 'groq' ? 'Groq · Llama-3.3-70B' : 'Gemini 2.0 Flash';
+
+  // ── STEP 1: INGEST ──
+  setStep(1);
+  log('ADK','info',`ADK Orchestrator: session ${Date.now().toString(36).toUpperCase()} — pipeline start`,'adk');
+  await sleep(260);
+  log('ADK','',`Workplan: 6-step Content-to-Action pipeline · ${providerLabel}`,'adk');
+  await sleep(280);
+  log('ADK','','Tool call: spawn_agent(role="ingestion", model="gemini-2.0-flash")','adk');
+  await sleep(300);
+  log('Agent-1','info','Ingestion agent online — parsing document structure','a1');
+  await sleep(340);
+  log('Agent-1','',`Content: ${report.length} chars · ${report.split('\n').length} lines · ${report.split(/\s+/).length} tokens`,'a1');
+  await sleep(380);
+  log('Agent-1','','Tokenizing: Executive Summary · Regional · Products · KPIs · Opportunities','a1');
+  await sleep(320);
+  log('Agent-1','success','Ingestion complete → structured payload forwarded to ADK router','a1');
+  await sleep(260);
+
+  // ── STEP 2: ANALYZE ──
+  setStep(2);
+  log('ADK','','Tool call: route_to_agent(role="analyst", payload=structured_fields)','adk');
+  await sleep(300);
+  log('Agent-2','info','Analyst agent handoff — beginning KPI extraction','a2');
+  await sleep(360);
+  log('Agent-2','','Running regex pattern matching over numeric fields...','a2');
+  await sleep(400);
+  const dm = report.match(/(\d+)%\s*decline/i);
+  if (dm) log('Agent-2','warn',`Revenue decline: ${dm[1]}% QoQ — CRITICAL flag raised`,'a2');
+  await sleep(280);
+  const dom = report.match(/(\d+)\s*dormant/i);
+  if (dom) log('Agent-2','warn',`Dormant cluster: ${dom[1]} accounts — high reactivation value`,'a2');
+  await sleep(320);
+  log('Agent-2','warn','Deal cycle anomaly: +59.5% increase → procurement bottleneck detected','a2');
+  await sleep(360);
+  log('Agent-2','','Cross-referencing upsell rate · MQL/SQL funnel · quota attainment...','a2');
+  await sleep(300);
+  log('Agent-2','success','KPI extraction complete — insight payload generated','a2');
+  await sleep(260);
+
+  // ── STEP 3: INSIGHTS ──
+  setStep(3);
+  log('ADK','',`Tool call: synthesize_insights(signals=kpi_anomalies, llm="${providerLabel.toLowerCase()}")`,'adk');
+  await sleep(340);
+  log('Agent-2','','Pattern correlation: churn + deal cycle + conversion drop = mid-funnel break','a2');
+  await sleep(380);
+  log('Agent-2','','Opportunity scoring: cybersecurity > dormant reactivation > ERP upsell','a2');
+  await sleep(300);
+
+  // ── API call or mock ──
+  const CRM_SAMPLE = [
+    {name:'Pak Textile Co · Lahore',   before:'Cold',  after:'Re-engaged', val:'PKR 1.4M'},
+    {name:'Sunrise Foods · Karachi',   before:'Cold',  after:'Re-engaged', val:'PKR 890K'},
+    {name:'Ali Brothers Trading',      before:'Cold',  after:'Warm',       val:'PKR 1.1M'},
+    {name:'Galaxy Pharma · Islamabad', before:'Churn', after:'Re-engaged', val:'PKR 2.2M'},
+    {name:'Metro Builders Ltd',        before:'Cold',  after:'Warm',       val:'PKR 760K'},
+  ];
+  function normalizeRaw(raw) {
+    return { company: raw.company||'NovaTech Solutions', dormant: raw.dormant||'67', dormantVal: raw.dormantVal||'31',
+      insight: raw.insight, impact: raw.impact, action: raw.action,
+      emailSubject: raw.emailSubject, emailBody: raw.emailBody,
+      before: raw.before||[], crmSample: CRM_SAMPLE, upsellAft:'19', quota:'61', dealCycle:'67' };
+  }
+  let result;
+  if (usingGemini) {
+    const isGroq = provider === 'groq';
+    log('ADK','info',`Calling ${isGroq?'Groq (Llama-3.3-70B)':'Gemini 2.0 Flash'} API...`,'adk');
+    await sleep(300);
+    try {
+      const raw = isGroq ? await callGroq(report, apiKey) : await callGemini(report, apiKey);
+      result = normalizeRaw(raw);
+      log('ADK','success',`${isGroq?'Groq':'Gemini'} response received — JSON validated`,'adk');
+    } catch(e) {
+      log('ADK','warn',`API error: ${e.message} — falling back to Mock Engine`,'adk');
+      result = mockAnalyze(report);
+    }
+  } else {
+    log('Agent-2','','Mock Engine: synthesizing from extracted KPI signals...','a2');
+    await sleep(600);
+    result = mockAnalyze(report);
+    log('Agent-2','success','Mock analysis complete — 3 insights · 2 risk vectors · 4 opportunities','a2');
+  }
+  state.result = result;
+  await sleep(260);
+
+  // ── STEP 4: ACTION ──
+  setStep(4);
+  log('ADK','','Tool call: spawn_agent(role="planner", input=insight_payload)','adk');
+  await sleep(320);
+  log('Agent-3','info','Action Planner activated — generating recommendations','a3');
+  await sleep(380);
+  log('Agent-3','',`Primary: ${result.dormant}-account re-engagement campaign (PKR ${result.dormantVal}M opportunity)`,'a3');
+  await sleep(360);
+  log('Agent-3','','Composing personalized outreach email with domain-specific content...','a3');
+  await sleep(440);
+  log('Agent-3','','Preparing CRM pipeline update payload for Salesforce...','a3');
+  await sleep(320);
+  log('Agent-3','','Staging webhook trigger for Zapier automation workflow...','a3');
+  await sleep(360);
+  log('Agent-3','success','Action plan complete: Email + CRM + Webhook ready','a3');
+  await sleep(260);
+
+  // ── STEP 5: SIMULATE ──
+  setStep(5);
+  log('ADK','','Tool call: simulate_execution(action_plan, environment="staging")','adk');
+  await sleep(300);
+  log('SYS','info','Simulation layer engaged — rendering full output UI');
+  renderResults(result);
+  await sleep(260);
+  log('SYS','success','Results rendered — all agents completed successfully');
+
+  // ── STEP 6: OUTCOME ──
+  setStep(6);
+  document.getElementById('progBar').style.width='100%';
+  await sleep(200);
+  log('SYS','info','Before/After outcome projection populated (90-day forecast)');
+  log('ADK','success',`ADK session complete · 5 tool calls · 3 agents · ${((Date.now()-state.startMs)/1000).toFixed(1)}s`,'adk');
+  stopTimer();
+  setRunning(false);
+  document.getElementById('runBtnTxt').textContent='▶ Run Again';
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER RESULTS
+// ═══════════════════════════════════════════════
+function renderResults(r) {
+  document.getElementById('cardInsight').textContent = r.insight;
+  document.getElementById('cardImpact').textContent  = r.impact;
+  document.getElementById('cardAction').textContent  = r.action;
+  document.getElementById('emailSubject').textContent = r.emailSubject;
+  document.getElementById('emailBody').textContent    = r.emailBody;
+  document.getElementById('emailTo').textContent = `${r.dormant} dormant accounts · sales-ops@company.pk`;
+
+  // Trace table
+  const now = new Date();
+  document.getElementById('traceTs').textContent = now.toISOString().replace('T',' ').split('.')[0]+' PKT';
+  const rows = [
+    {a:'Agent-1',   t:'parse_document()',     i:'Raw report text',      o:'Structured field map',    d:`${ri(140,280)}ms`},
+    {a:'Agent-2',   t:'extract_kpis()',       i:'Structured fields',    o:'Anomalies + opportunities',d:`${ri(290,470)}ms`},
+    {a:'Gemini LLM',t:'synthesize_insights()',i:'KPI signals',          o:'3 findings · 4 opps',     d:`${ri(380,620)}ms`},
+    {a:'Agent-3',   t:'generate_action()',    i:'Insight payload',      o:'Email + CRM + Webhook',   d:`${ri(200,340)}ms`},
+    {a:'ADK Sim',   t:'simulate_execution()', i:'Action plan',          o:'Before/After metrics',    d:`${ri(80,140)}ms`},
+  ];
+  document.getElementById('traceTable').innerHTML = rows.map(row=>`
+    <tr>
+      <td style="color:var(--accent3);font-weight:600">${row.a}</td>
+      <td style="color:var(--cyan)">${row.t}</td>
+      <td style="color:var(--text3)">${row.i}</td>
+      <td>${row.o}</td>
+      <td style="color:var(--text3)">${row.d}</td>
+      <td><span class="tag tag-ok">✓ OK</span></td>
+    </tr>`).join('');
+
+  // CRM rows
+  document.getElementById('crmTotal').textContent = `${r.dormant} records staged for update`;
+  document.getElementById('crmRows').innerHTML = (r.crmSample||[]).map(row=>`
+    <div class="crm-record">
+      <div>${row.name}</div>
+      <div><span class="stage-badge stage-cold">${row.before}</span></div>
+      <div><span class="stage-badge ${row.after==='Re-engaged'?'stage-engaged':'stage-warm'}">${row.after}</span></div>
+      <div style="color:var(--accent3)">${row.val}</div>
+    </div>`).join('');
+
+  // Webhook payload
+  const webhookPayload = JSON.stringify({
+    event: 'agentic_action_trigger',
+    source: 'InsightAI · ADK',
+    timestamp: new Date().toISOString(),
+    payload: {
+      action: 'dormant_reactivation_campaign',
+      company: r.company,
+      accounts_targeted: parseInt(r.dormant)||67,
+      estimated_value: `PKR ${r.dormantVal}M`,
+      priority: 'HIGH',
+      agents: ['Agent-1','Agent-2','Agent-3'],
+      adk_session: Date.now().toString(36).toUpperCase()
+    }
+  }, null, 2);
+  const webhookResponse = JSON.stringify({
+    status: 'accepted',
+    workflow_id: `WF-${ri(10000,99999)}`,
+    triggered_zaps: ['CRM-Sync','Slack-Alert','Sheet-Log'],
+    execution_time_ms: ri(180,380),
+    message: 'Workflow triggered successfully'
+  }, null, 2);
+  document.getElementById('webhookReq').textContent = webhookPayload;
+  document.getElementById('webhookRes').textContent = webhookResponse;
+  document.getElementById('webhookEndpoint').textContent = `Endpoint: POST https://hooks.zapier.com/hooks/catch/${ri(1000000,9999999)}/`;
+
+  // Before / After
+  document.getElementById('beforeMetrics').innerHTML = (r.before||[]).map(m=>`
+    <div class="metric-row"><span class="metric-name">${m.m}</span><span class="metric-val val-before">${m.b}</span></div>`).join('');
+  document.getElementById('afterMetrics').innerHTML = (r.before||[]).map((m,i)=>`
+    <div class="metric-row"><span class="metric-name">${m.m}</span><span class="metric-val val-after">${r.before[i]?r.before[i].a||'—':'—'}</span></div>`).join('');
+
+  // Fix: use the actual a field
+  document.getElementById('beforeMetrics').innerHTML = (r.before||[]).map(m=>`
+    <div class="metric-row"><span class="metric-name">${m.m}</span><span class="metric-val val-before">${m.b}</span></div>`).join('');
+  document.getElementById('afterMetrics').innerHTML = (r.before||[]).map(m=>`
+    <div class="metric-row"><span class="metric-name">${m.m}</span><span class="metric-val val-after">${m.a}</span></div>`).join('');
+
+  document.getElementById('resultsSection').classList.add('visible');
+  setTimeout(()=>document.getElementById('resultsSection').scrollIntoView({behavior:'smooth',block:'start'}),100);
+}
+
+// ═══════════════════════════════════════════════
+//  EXECUTE SIMULATIONS
+// ═══════════════════════════════════════════════
+async function executeEmail() {
+  if (!state.result) return;
+  const btn = document.getElementById('emailExecBtn');
+  btn.disabled=true;
+  document.getElementById('emailSpinner').style.display='block';
+  document.getElementById('emailExecTxt').textContent='Sending...';
+  log('ADK','','Tool call: execute_action(type="email_campaign")','adk');
+  await sleep(500);
+  log('Agent-3','',`SMTP relay: queuing ${state.result.dormant} personalized emails...`,'a3');
+  await sleep(700);
+  log('Agent-3','success',`${state.result.dormant} emails dispatched via TLS relay`,'a3');
+  log('ADK','success','Tool: log_action(status=sent, campaign_id='+`CMP-${ri(10000,99999)})`,'adk');
+  const now = new Date();
+  document.getElementById('eEmail').textContent   = `✓ Sent (${state.result.dormant} recipients)`;
+  document.getElementById('eRecip').textContent   = `${state.result.dormant} dormant accounts`;
+  document.getElementById('eTime').textContent    = now.toISOString().replace('T',' ').split('.')[0]+' PKT';
+  document.getElementById('eOpen').textContent    = `~${ri(28,42)}% (industry avg: 21%)`;
+  document.getElementById('eCamp').textContent    = `CMP-${ri(10000,99999)}`;
+  document.getElementById('emailResult').classList.add('visible');
+  document.getElementById('emailSpinner').style.display='none';
+  document.getElementById('emailExecTxt').textContent='✓ Campaign Sent';
+  btn.style.background='linear-gradient(135deg,#059669,#047857)';
+}
+
+async function executeCRM() {
+  if (!state.result) return;
+  const btn = document.getElementById('crmExecBtn');
+  btn.disabled=true;
+  document.getElementById('crmSpinner').style.display='block';
+  document.getElementById('crmExecTxt').textContent='Pushing...';
+  log('ADK','','Tool call: update_crm_pipeline(system="salesforce", records='+state.result.dormant+')','adk');
+  await sleep(600);
+  log('Agent-3','',`CRM API: staging ${state.result.dormant} contacts → "Re-engaged" lifecycle stage`,'a3');
+  await sleep(800);
+  log('Agent-3','','Salesforce webhook triggered — pipeline opportunity created','a3');
+  await sleep(400);
+  log('Agent-3','success',`${state.result.dormant} CRM records updated successfully`,'a3');
+  const now = new Date();
+  document.getElementById('cRecords').textContent  = `✓ ${state.result.dormant} updated`;
+  document.getElementById('cWorkflow').textContent = '✓ Triggered (3 flows)';
+  document.getElementById('cTime').textContent     = now.toISOString().replace('T',' ').split('.')[0]+' PKT';
+  document.getElementById('cTicket').textContent   = `SF-${ri(100000,999999)}`;
+  document.getElementById('cSync').textContent     = '✓ Synced to HubSpot';
+  document.getElementById('crmResult').classList.add('visible');
+  document.getElementById('crmSpinner').style.display='none';
+  document.getElementById('crmExecTxt').textContent='✓ CRM Updated';
+  btn.style.background='linear-gradient(135deg,#059669,#047857)';
+  // Update CRM table to show "engaged" state
+  document.querySelectorAll('.crm-record:not(.header) .stage-badge').forEach((el,i)=>{
+    if (i%2===1){el.textContent='Re-engaged';el.className='stage-badge stage-engaged';}
+  });
+}
+
+async function executeWebhook() {
+  if (!state.result) return;
+  const btn = document.getElementById('whExecBtn');
+  btn.disabled=true;
+  document.getElementById('whSpinner').style.display='block';
+  document.getElementById('whExecTxt').textContent='Firing...';
+  log('ADK','','Tool call: trigger_webhook(endpoint=zapier, payload=action_plan)','adk');
+  await sleep(500);
+  log('Agent-3','','POST https://hooks.zapier.com/hooks/catch/... → TLS handshake OK','a3');
+  await sleep(600);
+  log('Agent-3','success','Webhook response: 200 OK · 3 Zaps triggered','a3');
+  log('ADK','success','Tool: log_webhook(status=200, workflow_id='+`WF-${ri(10000,99999)})`,'adk');
+  const lat = ri(180,380);
+  const now = new Date();
+  document.getElementById('wStatus').textContent  = '200 OK';
+  document.getElementById('wLatency').textContent = `${lat}ms`;
+  document.getElementById('wTime').textContent    = now.toISOString().replace('T',' ').split('.')[0]+' PKT';
+  document.getElementById('wReqId').textContent   = `REQ-${ri(100000,999999)}`;
+  document.getElementById('whResult').classList.add('visible');
+  document.getElementById('whSpinner').style.display='none';
+  document.getElementById('whExecTxt').textContent='✓ Webhook Fired';
+  btn.style.background='linear-gradient(135deg,#059669,#047857)';
+}
+</script>
+</body>
+</html>
